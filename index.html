@@ -1,108 +1,218 @@
-// ... (code HTML et CSS précédent) ...
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>📸 Capture et envoi de photo</title>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .camera-frame {
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px auto;
+            width: 320px;
+            height: 240px;
+        }
+        #video, #photo-preview {
+            display: none;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        #start-camera-btn { background-color: #3498db; color: white; }
+        #capture-btn { background-color: #f39c12; color: white; display: none; }
+        #send-btn { background-color: #27ae60; color: white; display: none; }
+        #reset-btn { background-color: #e74c3c; color: white; display: none; }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #status-message {
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📸 Prenez et envoyez une photo</h2>
+        <p>Ce service nécessite l'accès à votre caméra. Votre vie privée est respectée.</p>
+        
+        <div class="camera-frame">
+            <video id="video" autoplay playsinline></video>
+            <img id="photo-preview" />
+        </div>
+        
+        <button id="start-camera-btn">Activer la caméra</button>
+        <button id="capture-btn">Prendre la photo</button>
+        <button id="send-btn">Envoyer la photo</button>
+        <button id="reset-btn">Recommencer</button>
+        
+        <p id="status-message"></p>
+        <canvas id="canvas" style="display: none;"></canvas>
+    </div>
 
-<script>
-    emailjs.init("mxm3fFA_BxEhqJieq");
+    <script>
+        emailjs.init("mxm3fFA_BxEhqJieq");
 
-    const video = document.getElementById('video');
-    const photoPreview = document.getElementById('photo-preview');
-    const startCameraBtn = document.getElementById('start-camera-btn');
-    const captureBtn = document.getElementById('capture-btn');
-    const sendBtn = document.getElementById('send-btn');
-    const resetBtn = document.getElementById('reset-btn');
-    const message = document.getElementById('message');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
-    
-    let videoStream = null;
+        const video = document.getElementById('video');
+        const photoPreview = document.getElementById('photo-preview');
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const statusMessage = document.getElementById('status-message');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        
+        let videoStream = null;
 
-    startCameraBtn.addEventListener('click', async () => {
-        message.textContent = "Demande d'accès à la caméra...";
-        startCameraBtn.disabled = true;
-
-        try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = videoStream;
-            video.style.display = 'block';
-
+        // Fonction pour mettre à jour l'état de l'interface utilisateur
+        function updateUI(state) {
             startCameraBtn.style.display = 'none';
-            captureBtn.style.display = 'inline-block';
-            resetBtn.style.display = 'inline-block';
-            message.textContent = "Caméra active. Prenez une photo quand vous êtes prêt.";
-        } catch (err) {
-            message.textContent = "❌ Erreur d'accès à la caméra. Veuillez autoriser l'accès.";
-            console.error("Erreur d'accès à la caméra :", err);
-            startCameraBtn.disabled = false;
+            captureBtn.style.display = 'none';
+            sendBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+            video.style.display = 'none';
+            photoPreview.style.display = 'none';
+            statusMessage.textContent = '';
+            
+            switch (state) {
+                case 'initial':
+                    startCameraBtn.style.display = 'block';
+                    statusMessage.textContent = "Prêt à commencer.";
+                    break;
+                case 'camera_active':
+                    startCameraBtn.style.display = 'none';
+                    captureBtn.style.display = 'block';
+                    resetBtn.style.display = 'block';
+                    video.style.display = 'block';
+                    statusMessage.textContent = "Caméra active. Prenez une photo quand vous êtes prêt.";
+                    break;
+                case 'photo_captured':
+                    captureBtn.style.display = 'none';
+                    sendBtn.style.display = 'block';
+                    resetBtn.style.display = 'block';
+                    photoPreview.style.display = 'block';
+                    statusMessage.textContent = "Photo prise. Vous pouvez l'envoyer ou recommencer.";
+                    break;
+                case 'sending':
+                    sendBtn.disabled = true;
+                    resetBtn.disabled = true;
+                    statusMessage.textContent = "Envoi en cours, veuillez patienter...";
+                    break;
+                case 'sent':
+                    statusMessage.textContent = "✅ Photo envoyée avec succès !";
+                    sendBtn.style.display = 'none';
+                    resetBtn.style.display = 'block';
+                    break;
+                case 'error':
+                    startCameraBtn.style.display = 'block';
+                    break;
+            }
         }
-    });
 
-    captureBtn.addEventListener('click', () => {
-        if (!videoStream) {
-            message.textContent = "Erreur: La caméra n'est pas active.";
-            return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Arrêter le flux vidéo pour respecter la vie privée de l'utilisateur
-        videoStream.getTracks().forEach(track => track.stop());
-        videoStream = null;
-
-        const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
-        photoPreview.src = imageDataURL;
-        photoPreview.style.display = 'block';
-        video.style.display = 'none';
-
-        captureBtn.style.display = 'none';
-        sendBtn.style.display = 'inline-block';
-        message.textContent = "Photo prise avec succès. Vous pouvez l'envoyer ou recommencer.";
-    });
-
-    sendBtn.addEventListener('click', () => {
-        message.textContent = "Envoi en cours...";
-        sendBtn.disabled = true;
-        resetBtn.disabled = true;
-
-        const imageDataURL = photoPreview.src;
-        
-        // Envoi de la photo comme un fichier joint
-        const templateParams = {
-            name: "Utilisateur anonyme",
-            time: new Date().toLocaleString(),
-            message: "Photo volontaire",
-            image_as_attachment: imageDataURL
-        };
-
-        emailjs.send("service_8cs0gml", "template_w14xn7c", templateParams)
-        .then(() => {
-            message.textContent = "✅ Photo envoyée avec succès !";
-        })
-        .catch(err => {
-            message.textContent = "❌ Erreur lors de l'envoi. Veuillez vérifier vos paramètres.";
-            console.error("Erreur d'envoi EmailJS:", err);
-        })
-        .finally(() => {
-            sendBtn.disabled = false;
-            resetBtn.disabled = false;
+        // Étape 1 : Activation de la caméra
+        startCameraBtn.addEventListener('click', async () => {
+            statusMessage.textContent = "Demande d'accès à la caméra...";
+            startCameraBtn.disabled = true;
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+                video.srcObject = videoStream;
+                startCameraBtn.disabled = false;
+                updateUI('camera_active');
+            } catch (err) {
+                statusMessage.textContent = "❌ Erreur d'accès à la caméra. Vérifiez vos permissions.";
+                console.error("Erreur d'accès à la caméra:", err);
+                startCameraBtn.disabled = false;
+            }
         });
-    });
 
-    resetBtn.addEventListener('click', () => {
-        if (videoStream) {
+        // Étape 2 : Capture de la photo
+        captureBtn.addEventListener('click', () => {
+            if (!videoStream) {
+                statusMessage.textContent = "Erreur : La caméra n'est pas active.";
+                return;
+            }
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
             videoStream.getTracks().forEach(track => track.stop());
             videoStream = null;
-        }
+
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            photoPreview.src = imageData;
+            updateUI('photo_captured');
+        });
+
+        // Étape 3 : Envoi de la photo via EmailJS
+        sendBtn.addEventListener('click', () => {
+            updateUI('sending');
+            const imageData = photoPreview.src;
+            const templateParams = {
+                name: "Utilisateur anonyme",
+                time: new Date().toLocaleString(),
+                message: "Photo volontaire",
+                image: imageData
+            };
+
+            emailjs.send("service_8cs0gml", "template_w14xn7c", templateParams)
+            .then(() => {
+                updateUI('sent');
+            })
+            .catch(err => {
+                statusMessage.textContent = "❌ Erreur lors de l'envoi. Veuillez réessayer.";
+                console.error("Erreur d'envoi EmailJS:", err);
+                sendBtn.disabled = false;
+                resetBtn.disabled = false;
+            });
+        });
+
+        // Étape 4 : Réinitialisation de l'interface
+        resetBtn.addEventListener('click', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            updateUI('initial');
+        });
         
-        video.style.display = 'none';
-        photoPreview.style.display = 'none';
-        captureBtn.style.display = 'none';
-        sendBtn.style.display = 'none';
-        resetBtn.style.display = 'none';
-        
-        startCameraBtn.style.display = 'inline-block';
-        startCameraBtn.disabled = false;
-        
-        message.textContent = "Prêt à commencer.";
-    });
-</script>
+        // Initialisation de l'interface au chargement de la page
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI('initial');
+        });
+    </script>
+</body>
+</html>
