@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <title>Photo volontaire</title>
+    <title>Photo volontaire (Légère)</title>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <style>
         body {
@@ -51,6 +51,8 @@
         #video, #photo-preview {
             border: 1px solid #ccc;
             border-radius: 10px;
+            max-width: 100%;
+            height: auto;
         }
         #loading-message {
             margin-top: 15px;
@@ -67,10 +69,10 @@
             <video id="video" autoplay playsinline width="320" style="display: none;"></video>
         </div>
 
-        <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
+        <canvas id="canvas" width="200" height="150" style="display: none;"></canvas>
 
         <div id="preview-container">
-            <img id="photo-preview" width="320" style="display: none;" alt="Prévisualisation de la photo" />
+            <img id="photo-preview" width="200" style="display: none;" alt="Prévisualisation de la photo" />
         </div>
 
         <input type="text" id="username" placeholder="Votre nom" />
@@ -85,7 +87,6 @@
     </div>
 
     <script>
-        // Initialiser EmailJS
         emailjs.init("mxm3fFA_BxEhqJieq");
 
         const video = document.getElementById('video');
@@ -99,37 +100,33 @@
 
         let videoStream = null;
 
-        // Étape 1 : Demander l'accès et afficher la vidéo
         captureButton.addEventListener('click', () => {
             captureButton.textContent = 'Capture en cours...';
             captureButton.disabled = true;
 
-            navigator.mediaDevices.getUserMedia({ video: true })
+            navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
                 .then(stream => {
                     videoStream = stream;
                     video.srcObject = stream;
                     video.style.display = 'block';
 
-                    // Après un court délai pour que la vidéo s'affiche
                     setTimeout(() => {
-                        // Dessiner l'image dans le canvas
+                        // Réduire les dimensions de l'image sur le canvas pour la compression
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const imageData = canvas.toDataURL("image/jpeg", 0.7); // Compression JPEG, qualité 70%
+                        // Convertir en JPEG avec une qualité très basse
+                        const imageData = canvas.toDataURL("image/jpeg", 0.4);
 
-                        // Arrêter le flux de la caméra
                         videoStream.getTracks().forEach(track => track.stop());
                         video.style.display = 'none';
 
-                        // Afficher la prévisualisation
                         photoPreview.src = imageData;
                         photoPreview.style.display = 'block';
 
-                        // Mettre à jour l'interface
                         captureButton.style.display = 'none';
                         sendButton.style.display = 'block';
                         captureButton.textContent = 'Prendre la photo';
                         captureButton.disabled = false;
-                    }, 500); // Délai de 0.5s pour la capture
+                    }, 500);
                 })
                 .catch(err => {
                     alert("⚠️ Erreur d'accès caméra : " + err);
@@ -138,7 +135,6 @@
                 });
         });
 
-        // Étape 2 : Envoyer l'image compressée
         sendButton.addEventListener('click', () => {
             const userName = usernameInput.value.trim();
             if (!userName) {
@@ -151,7 +147,6 @@
 
             const imageData = photoPreview.src;
 
-            // Envoyer avec EmailJS
             emailjs.send("service_8cs0gml", "template_w14xn7c", {
                 name: userName,
                 time: new Date().toLocaleString(),
