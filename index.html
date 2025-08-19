@@ -2,108 +2,180 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <title>Photo unique</title>
+    <title>Photo volontaire</title>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-align: center;
             padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
         }
-        #capture {
-            padding: 10px 20px;
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        input[type="text"] {
+            padding: 12px;
+            width: 90%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 12px 25px;
             font-size: 16px;
             border: none;
-            background: #2c3e50;
+            background: #3498db;
             color: white;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: background 0.3s ease;
         }
-        #photo-preview {
+        button:hover {
+            background: #2980b9;
+        }
+        #video-container, #preview-container {
+            margin: 20px 0;
+        }
+        #video, #photo-preview {
             border: 1px solid #ccc;
             border-radius: 10px;
-            margin-top: 20px;
-            display: none; /* Cache la prévisualisation par défaut */
+        }
+        #loading-message {
+            margin-top: 15px;
+            font-style: italic;
+            color: #7f8c8d;
         }
     </style>
 </head>
 <body>
-    <h2>📸 Prendre une photo et l’envoyer</h2>
+    <div class="container">
+        <h2>📸 Prendre une photo et l’envoyer</h2>
 
-    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+        <div id="video-container">
+            <video id="video" autoplay playsinline width="320" style="display: none;"></video>
+        </div>
 
-    <img id="photo-preview" width="320" alt="Prévisualisation de la photo" />
-    
-    <br><br>
+        <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
 
-    <input type="text" id="username" placeholder="Votre nom" style="padding:8px; width:200px" />
-    <br><br>
+        <div id="preview-container">
+            <img id="photo-preview" width="320" style="display: none;" alt="Prévisualisation de la photo" />
+        </div>
 
-    <button id="capture">
-        📤 Prendre la photo et envoyer
-    </button>
+        <input type="text" id="username" placeholder="Votre nom" />
+
+        <button id="capture">
+            Prendre la photo
+        </button>
+        <button id="send" style="background: #27ae60; display: none;">
+            Envoyer la photo
+        </button>
+        <div id="loading-message" style="display: none;">Envoi en cours, patientez...</div>
+    </div>
 
     <script>
         // Initialiser EmailJS
         emailjs.init("mxm3fFA_BxEhqJieq");
 
+        const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
         const captureButton = document.getElementById('capture');
+        const sendButton = document.getElementById('send');
         const usernameInput = document.getElementById('username');
         const photoPreview = document.getElementById('photo-preview');
+        const loadingMessage = document.getElementById('loading-message');
 
-        // Quand on clique sur le bouton
+        let videoStream = null;
+
+        // Étape 1 : Demander l'accès et afficher la vidéo
         captureButton.addEventListener('click', () => {
+            captureButton.textContent = 'Capture en cours...';
+            captureButton.disabled = true;
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    videoStream = stream;
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+
+                    // Après un court délai pour que la vidéo s'affiche
+                    setTimeout(() => {
+                        // Dessiner l'image dans le canvas
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = canvas.toDataURL("image/jpeg", 0.7); // Compression JPEG, qualité 70%
+
+                        // Arrêter le flux de la caméra
+                        videoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+
+                        // Afficher la prévisualisation
+                        photoPreview.src = imageData;
+                        photoPreview.style.display = 'block';
+
+                        // Mettre à jour l'interface
+                        captureButton.style.display = 'none';
+                        sendButton.style.display = 'block';
+                        captureButton.textContent = 'Prendre la photo';
+                        captureButton.disabled = false;
+                    }, 500); // Délai de 0.5s pour la capture
+                })
+                .catch(err => {
+                    alert("⚠️ Erreur d'accès caméra : " + err);
+                    captureButton.textContent = 'Prendre la photo';
+                    captureButton.disabled = false;
+                });
+        });
+
+        // Étape 2 : Envoyer l'image compressée
+        sendButton.addEventListener('click', () => {
             const userName = usernameInput.value.trim();
             if (!userName) {
                 alert("Merci d’entrer votre nom avant d’envoyer !");
                 return;
             }
 
-            // Demander l’accès à la caméra
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    const videoTrack = stream.getVideoTracks()[0];
-                    const imageCapture = new ImageCapture(videoTrack);
+            loadingMessage.style.display = 'block';
+            sendButton.disabled = true;
 
-                    // Capturer une seule image
-                    imageCapture.grabFrame()
-                        .then(imageBitmap => {
-                            // Dessiner l'image dans le canvas
-                            context.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
-                            const imageData = canvas.toDataURL("image/png");
+            const imageData = photoPreview.src;
 
-                            // Afficher la prévisualisation
-                            photoPreview.src = imageData;
-                            photoPreview.style.display = 'block';
-
-                            // Arrêter le flux de la caméra
-                            videoTrack.stop();
-
-                            // Envoyer avec EmailJS
-                            emailjs.send("service_8cs0gml", "template_w14xn7c", {
-                                name: userName,
-                                time: new Date().toLocaleString(),
-                                message: "Nouvelle photo volontaire 📸",
-                                image: imageData
-                            })
-                            .then(() => {
-                                alert("✅ Photo envoyée avec succès !");
-                            })
-                            .catch(err => {
-                                alert("❌ Erreur lors de l'envoi : " + JSON.stringify(err));
-                            });
-                        })
-                        .catch(err => {
-                            alert("⚠️ Erreur de capture d'image : " + err);
-                            videoTrack.stop();
-                        });
-                })
-                .catch(err => {
-                    alert("⚠️ Erreur d'accès caméra : " + err);
-                });
+            // Envoyer avec EmailJS
+            emailjs.send("service_8cs0gml", "template_w14xn7c", {
+                name: userName,
+                time: new Date().toLocaleString(),
+                message: "Nouvelle photo volontaire 📸",
+                image: imageData
+            })
+            .then(() => {
+                alert("✅ Photo envoyée avec succès !");
+                resetUI();
+            })
+            .catch(err => {
+                alert("❌ Erreur lors de l'envoi : " + JSON.stringify(err));
+                resetUI();
+            });
         });
+
+        function resetUI() {
+            loadingMessage.style.display = 'none';
+            sendButton.disabled = false;
+            sendButton.style.display = 'none';
+            captureButton.style.display = 'block';
+            photoPreview.style.display = 'none';
+            usernameInput.value = '';
+        }
     </script>
 </body>
 </html>
