@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <title>Photo volontaire</title>
+    <title>Photo volontaire (JPEG)</title>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <style>
         body {
@@ -10,6 +10,7 @@
             text-align: center;
             padding: 20px;
             background: #f4f4f4;
+            color: #333;
         }
         .container {
             max-width: 500px;
@@ -20,14 +21,12 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         #video-container, #preview-container {
-            margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 8px;
             overflow: hidden;
             width: 320px;
             height: 240px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 20px auto;
         }
         video, img {
             width: 100%;
@@ -41,31 +40,30 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
-        #start-camera-btn {
-            background-color: #3498db;
-            color: white;
+        button:hover:not(:disabled) {
+            opacity: 0.8;
         }
-        #capture-btn {
-            background-color: #2ecc71;
-            color: white;
-            display: none;
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
         }
-        #send-btn {
-            background-color: #27ae60;
-            color: white;
-            display: none;
-        }
+        #start-camera-btn { background-color: #3498db; color: white; }
+        #capture-btn { background-color: #f39c12; color: white; display: none; }
+        #send-btn { background-color: #27ae60; color: white; display: none; }
+        #reset-btn { background-color: #e74c3c; color: white; display: none; }
         #message {
             margin-top: 20px;
             font-weight: bold;
+            min-height: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>📸 Prenez une photo</h2>
-        <p>Ce site a besoin d'accéder à votre caméra pour continuer. Aucune photo ne sera prise ou enregistrée sans votre permission explicite.</p>
+        <p>Cliquez sur "Activer la caméra" pour commencer. Votre permission est requise.</p>
         
         <div id="video-container">
             <video id="video" autoplay playsinline></video>
@@ -77,6 +75,7 @@
         <button id="start-camera-btn">Activer la caméra</button>
         <button id="capture-btn">Prendre la photo</button>
         <button id="send-btn">Envoyer la photo</button>
+        <button id="reset-btn">Recommencer</button>
         
         <p id="message"></p>
         <canvas id="canvas" style="display: none;"></canvas>
@@ -90,6 +89,7 @@
         const startCameraBtn = document.getElementById('start-camera-btn');
         const captureBtn = document.getElementById('capture-btn');
         const sendBtn = document.getElementById('send-btn');
+        const resetBtn = document.getElementById('reset-btn');
         const message = document.getElementById('message');
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
@@ -97,43 +97,54 @@
         let videoStream = null;
 
         startCameraBtn.addEventListener('click', async () => {
+            message.textContent = "Demande d'accès à la caméra...";
+            startCameraBtn.disabled = true;
+
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = videoStream;
                 video.style.display = 'block';
+
                 startCameraBtn.style.display = 'none';
                 captureBtn.style.display = 'inline-block';
-                message.textContent = "Caméra active. Vous pouvez maintenant prendre une photo.";
+                resetBtn.style.display = 'inline-block';
+                message.textContent = "Caméra active. Prenez une photo quand vous êtes prêt.";
             } catch (err) {
                 message.textContent = "❌ Erreur d'accès à la caméra. Veuillez autoriser l'accès.";
                 console.error("Erreur d'accès à la caméra :", err);
+                startCameraBtn.disabled = false;
             }
         });
 
         captureBtn.addEventListener('click', () => {
-            if (videoStream) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                const imageData = canvas.toDataURL('image/jpeg', 0.8);
-                
-                photoPreview.src = imageData;
-                photoPreview.style.display = 'block';
-                video.style.display = 'none';
-
-                videoStream.getTracks().forEach(track => track.stop());
-                videoStream = null;
-
-                captureBtn.style.display = 'none';
-                sendBtn.style.display = 'inline-block';
-                message.textContent = "Photo prise. Vous pouvez l'envoyer.";
+            if (!videoStream) {
+                message.textContent = "Erreur: La caméra n'est pas active.";
+                return;
             }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Conversion de l'image au format JPEG avec une qualité de 80%
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            photoPreview.src = imageData;
+            photoPreview.style.display = 'block';
+            video.style.display = 'none';
+
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+
+            captureBtn.style.display = 'none';
+            sendBtn.style.display = 'inline-block';
+            message.textContent = "Photo prise avec succès. Vous pouvez l'envoyer ou recommencer.";
         });
 
         sendBtn.addEventListener('click', () => {
             message.textContent = "Envoi en cours...";
             sendBtn.disabled = true;
+            resetBtn.disabled = true;
 
             const imageData = photoPreview.src;
 
@@ -145,16 +156,33 @@
             })
             .then(() => {
                 message.textContent = "✅ Photo envoyée avec succès !";
-                sendBtn.style.display = 'none';
-                setTimeout(() => {
-                    message.textContent = "";
-                }, 5000);
             })
             .catch(err => {
-                message.textContent = "❌ Erreur lors de l'envoi. Veuillez réessayer.";
-                console.error("Erreur envoi:", err);
+                message.textContent = "❌ Erreur lors de l'envoi. Veuillez vérifier vos paramètres.";
+                console.error("Erreur d'envoi EmailJS:", err);
+            })
+            .finally(() => {
                 sendBtn.disabled = false;
+                resetBtn.disabled = false;
             });
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            video.style.display = 'none';
+            photoPreview.style.display = 'none';
+            captureBtn.style.display = 'none';
+            sendBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+            
+            startCameraBtn.style.display = 'inline-block';
+            startCameraBtn.disabled = false;
+            
+            message.textContent = "Prêt à commencer.";
         });
     </script>
 </body>
