@@ -7,30 +7,32 @@
 </head>
 <body style="font-family: sans-serif; text-align: center; padding: 20px">
   <h2>📸 Prendre une photo et l’envoyer</h2>
-
+  
   <!-- Vidéo caméra -->
   <video id="video" autoplay playsinline width="320" style="border:1px solid #ccc; border-radius:10px"></video>
   <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-
+  
   <br><br>
-
+  
   <!-- Nom utilisateur -->
   <input type="text" id="username" placeholder="Votre nom" style="padding:8px; width:200px">
   <br><br>
-
+  
   <!-- Bouton capture -->
-  <button id="capture" style="padding:10px 20px; font-size:16px; border:none; background:
-#2c3e50; color:white; border-radius:6px; cursor:pointer;">
+  <button id="capture" style="padding:10px 20px; font-size:16px; border:none; background:#2c3e50; color:white; border-radius:6px; cursor:pointer;">
     📤 Capturer et envoyer
   </button>
+
   <script>
     // Initialiser EmailJS
     emailjs.init("mxm3fFA_BxEhqJieq");
+
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
     const captureButton = document.getElementById('capture');
     const usernameInput = document.getElementById('username');
+
     // Demander l’accès à la caméra
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
@@ -39,6 +41,7 @@
       .catch(err => {
         alert("⚠️ Erreur d'accès caméra : " + err);
       });
+
     // Quand on clique sur le bouton
     captureButton.addEventListener('click', () => {
       // Vérifier que le nom est renseigné
@@ -47,9 +50,11 @@
         alert("Merci d’entrer votre nom avant d’envoyer !");
         return;
       }
+
       // Dessiner image dans le canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL("image/png");
+
       // Envoyer avec EmailJS
       emailjs.send("service_8cs0gml", "template_w14xn7c", {
         name: userName,
