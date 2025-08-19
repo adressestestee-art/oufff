@@ -98,7 +98,6 @@
         
         let videoStream = null;
 
-        // Fonction pour mettre à jour l'état de l'interface utilisateur
         function updateUI(state) {
             startCameraBtn.style.display = 'none';
             captureBtn.style.display = 'none';
@@ -143,7 +142,6 @@
             }
         }
 
-        // Étape 1 : Activation de la caméra
         startCameraBtn.addEventListener('click', async () => {
             statusMessage.textContent = "Demande d'accès à la caméra...";
             startCameraBtn.disabled = true;
@@ -159,7 +157,6 @@
             }
         });
 
-        // Étape 2 : Capture de la photo
         captureBtn.addEventListener('click', () => {
             if (!videoStream) {
                 statusMessage.textContent = "Erreur : La caméra n'est pas active.";
@@ -177,15 +174,15 @@
             updateUI('photo_captured');
         });
 
-        // Étape 3 : Envoi de la photo via EmailJS
         sendBtn.addEventListener('click', () => {
             updateUI('sending');
-            const imageData = photoPreview.src;
+            const imageDataURL = photoPreview.src;
+            
             const templateParams = {
                 name: "Utilisateur anonyme",
                 time: new Date().toLocaleString(),
                 message: "Photo volontaire",
-                image: imageData
+                image: imageDataURL 
             };
 
             emailjs.send("service_8cs0gml", "template_w14xn7c", templateParams)
@@ -200,7 +197,6 @@
             });
         });
 
-        // Étape 4 : Réinitialisation de l'interface
         resetBtn.addEventListener('click', () => {
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
@@ -209,7 +205,6 @@
             updateUI('initial');
         });
         
-        // Initialisation de l'interface au chargement de la page
         document.addEventListener('DOMContentLoaded', () => {
             updateUI('initial');
         });
