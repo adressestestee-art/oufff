@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <title>Photo volontaire (Légère)</title>
+    <title>Photo volontaire (Mini)</title>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <style>
         body {
@@ -66,7 +66,7 @@
         <h2>📸 Prendre une photo et l’envoyer</h2>
 
         <div id="video-container">
-            <video id="video" autoplay playsinline width="320" style="display: none;"></video>
+            <video id="video" autoplay playsinline width="200" height="150" style="display: none;"></video>
         </div>
 
         <canvas id="canvas" width="200" height="150" style="display: none;"></canvas>
@@ -100,18 +100,20 @@
 
         let videoStream = null;
 
+        // Étape 1 : Demander l'accès et afficher la vidéo à la plus petite résolution
         captureButton.addEventListener('click', () => {
             captureButton.textContent = 'Capture en cours...';
             captureButton.disabled = true;
 
-            navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
+            // Spécifiez la résolution minimale de la vidéo
+            navigator.mediaDevices.getUserMedia({ video: { width: 200, height: 150 } })
                 .then(stream => {
                     videoStream = stream;
                     video.srcObject = stream;
                     video.style.display = 'block';
 
                     setTimeout(() => {
-                        // Réduire les dimensions de l'image sur le canvas pour la compression
+                        // Dessiner l'image avec la résolution native sur le canvas
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
                         // Convertir en JPEG avec une qualité très basse
                         const imageData = canvas.toDataURL("image/jpeg", 0.4);
@@ -135,6 +137,7 @@
                 });
         });
 
+        // Étape 2 : Envoyer l'image compressée
         sendButton.addEventListener('click', () => {
             const userName = usernameInput.value.trim();
             if (!userName) {
