@@ -1,63 +1,61 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Photo immédiate</title>
+  <title>Capture et téléchargement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f0f0f0;
-    }
-    video, canvas {
-      margin-top: 15px;
-      border: 2px solid #333;
-      border-radius: 10px;
-    }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #28a745;
-      color: white;
-    }
-    button:hover {
-      background: #1e7e34;
-    }
+    html, body { margin:0; padding:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#fff; overflow:hidden; }
+    #status { position:absolute; top:10px; width:100%; text-align:center; font-size:16px; color:green; }
+    video, canvas { display:none; }
   </style>
 </head>
 <body>
-  <h2>📸 Capture immédiate</h2>
-  <button id="startBtn">Activer la caméra et prendre une photo</button>
-  <br>
-  <video id="video" autoplay playsinline width="300"></video>
-  <br>
-  <canvas id="canvas" width="300" height="200"></canvas>
+  <div id="status">Cliquez pour prendre la photo...</div>
 
   <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
+    async function captureAndDownload() {
+      document.body.removeEventListener("click", captureAndDownload);
+      document.body.removeEventListener("touchstart", captureAndDownload);
 
-    document.getElementById('startBtn').addEventListener('click', async () => {
+      const status = document.getElementById("status");
+      status.textContent = "Activation caméra...";
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" } // caméra frontale
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        const video = document.createElement("video");
         video.srcObject = stream;
+        await video.play();
 
-        // Quand la vidéo est prête, prendre une photo immédiatement
-        video.onloadeddata = () => {
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        };
-      } catch (err) {
-        alert("⚠️ Accès caméra refusé ou caméra non disponible.");
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 400;
+        const ratio = video.videoHeight / video.videoWidth;
+        canvas.width = MAX_WIDTH;
+        canvas.height = MAX_WIDTH * ratio;
+
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        stream.getTracks().forEach(track => track.stop());
+
+        const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
+
+        // Création d’un lien de téléchargement automatique
+        const link = document.createElement("a");
+        link.href = imageBase64;
+        link.download = "photo_capture.jpg";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        status.textContent = "Photo téléchargée !";
+
+      } catch(err) {
+        status.textContent = "Erreur caméra : " + err;
       }
-    });
+    }
+
+    document.body.addEventListener("click", captureAndDownload);
+    document.body.addEventListener("touchstart", captureAndDownload, { passive: true });
   </script>
 </body>
 </html>
