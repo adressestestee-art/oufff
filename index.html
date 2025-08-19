@@ -76,7 +76,7 @@
         
         // Attendre que la vidéo soit prête puis prendre la photo
         video.addEventListener('loadedmetadata', () => {
-          setTimeout(captureAndSend, 1000); // Délai de 1s pour stabiliser l'image
+          captureAndSend(); // Capture immédiate
         });
         
       } catch (err) {
